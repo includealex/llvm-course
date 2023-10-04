@@ -1,19 +1,22 @@
 #ifndef LLVM_COURSE_INCLUDES_LIFE_HPP
 #define LLVM_COURSE_INCLUDES_LIFE_HPP
 
+#include "graphics.hpp"
+#include <math.h>
+
 struct RGB {
-  int R;
-  int G;
-  int B;
+    int R;
+    int G;
+    int B;
 };
 
-struct dot {
-  int x;
-  int y;
-  RGB color;
-  int existance = 0; // doesn't exist = 0
+struct Square {
+    int x;
+    int y;
+    RGB rgb{};
 };
 
 int main_();
+void putSquare(const Square Square);
 
-#endif //LLVM_COURSE_INCLUDES_LIFE_HPP
+#endif // LLVM_COURSE_INCLUDES_LIFE_HPP

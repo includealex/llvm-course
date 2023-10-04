@@ -1,8 +1,7 @@
 #include "life.hpp"
 
-int main()
-{
-    main_();    
+int main() {
+  int res = main_();
 
-    return 0;
+  return res;
 }
