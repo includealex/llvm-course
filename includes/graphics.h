@@ -1,5 +1,5 @@
 #ifndef INCLUDES_GRAPHICS_H
-#define INCUDES_GRAPHICS_H
+#define INCLUDES_GRAPHICS_H
 
 #include <assert.h>
 #include <stdlib.h>
@@ -18,4 +18,4 @@ void simFlush();
 void simPutPixel(int x, int y, int argb);
 int simRand();
 
-#endif // INCUDES_GRAPHICS_H
+#endif // INCLUDES_GRAPHICS_H
