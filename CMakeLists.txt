@@ -1,18 +1,16 @@
 cmake_minimum_required(VERSION 3.27.6)
 project(MYLLVM VERSION 1.0.0 DESCRIPTION "LLVM WITH GRAPHICS")
+enable_language(C)
 
 add_subdirectory(mainAction)
+set(SOURCES ./src)
+set(INCLUDES ./includes)
 
-file(GLOB_RECURSE LLVM_FILES ./src/*cpp ./includes/*.hpp)
+file(GLOB_RECURSE LLVM_FILES ${SOURCES}/*.c ${INCLUDES}/*.h)
 
 add_library(myllvm STATIC ${LLVM_FILES})
 
-target_include_directories(myllvm PUBLIC ./includes/)
-
-set_target_properties(myllvm PROPERTIES
-  CXX_STANDARD 17
-  CXX_STANDARD_REQUIRED ON
-)
+target_include_directories(myllvm PUBLIC ${INCLUDES})
 
 find_program(CLANG_FORMAT "clang-format" REQUIRED)
 
@@ -23,5 +21,3 @@ add_custom_target (
     -style=file
     ${LLVM_FILES}
 )
-
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -lm")
