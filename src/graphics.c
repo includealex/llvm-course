@@ -1,3 +1,9 @@
+#include <assert.h>
+#include <stdlib.h>
+#include <time.h>
+
+#include <SDL2/SDL.h>
+
 #include "graphics.h"
 
 #define FRAME_TICKS 50
