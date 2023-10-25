@@ -12,10 +12,6 @@ void funcEndLogger(char* funcName, long int valID){
     printf("[LOG] End function '%s' {%ld}\n", funcName, valID);
 }
 
-void binOptLogger(int val, int arg0, int arg1, char* opName, char* funcName, long int valID){
-    printf("[LOG] In function '%s': %d = %d %s %d {%ld}\n", funcName, val, arg0, opName, arg1, valID);
-}
-
 void ex_foo(int x) {
     if(x == 42) {
         printf("Hi\n");
@@ -26,8 +22,19 @@ void ex_foo(int x) {
 }
 
 int main() {
-    int x = 42;
-    ex_foo(x);
+
+    int NUM_SQRS_X = 10000;
+    int NUM_SQRS_Y = 10000;
+    int sqr_num = 60;
+    for (int i = 0; i < NUM_SQRS_X; ++i) {
+        for (int j = 0; j < NUM_SQRS_Y; ++j) {
+            int random = i * j % sqr_num;
+            if (random < 1) {
+                printf("Gotcha");
+                continue;
+            }
+        }
+    }
 
     return 0;
 }

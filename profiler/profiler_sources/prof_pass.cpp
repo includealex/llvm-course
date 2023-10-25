@@ -72,18 +72,6 @@ struct MyPass : public FunctionPass {
         FunctionType::get(retType, funcEndParamTypes, false);
     FunctionCallee funcEndLogFunc =
         F.getParent()->getOrInsertFunction("funcEndLogger", funcEndLogFuncType);
-
-    // Prepare binOptLogger function
-    ArrayRef<Type *> binOptParamTypes = {Type::getInt32Ty(Ctx),
-                                            Type::getInt32Ty(Ctx),
-                                            Type::getInt32Ty(Ctx),
-                                            builder.getInt8Ty()->getPointerTo(),
-                                            builder.getInt8Ty()->getPointerTo(),
-                                            Type::getInt64Ty(Ctx)};
-    FunctionType *binOptLogFuncType =
-        FunctionType::get(retType, binOptParamTypes, false);
-    FunctionCallee binOptLogFunc =
-        F.getParent()->getOrInsertFunction("binOptLogger", binOptLogFuncType);
     
     // Insert loggers for call, binOpt and ret instructions
     for (auto &B : F) {
@@ -112,19 +100,6 @@ struct MyPass : public FunctionPass {
           Value *funcName = builder.CreateGlobalStringPtr(F.getName());
           Value *args[] = {funcName, valueAddr};
           builder.CreateCall(funcEndLogFunc, args);
-        }
-        if (auto *op = dyn_cast<BinaryOperator>(&I)) {
-          // Insert after op
-          builder.SetInsertPoint(op);
-          builder.SetInsertPoint(&B, ++builder.GetInsertPoint());
-
-          // Insert a call to binOptLogFunc function
-          Value *lhs = op->getOperand(0);
-          Value *rhs = op->getOperand(1);
-          Value *funcName = builder.CreateGlobalStringPtr(F.getName());
-          Value *opName = builder.CreateGlobalStringPtr(op->getOpcodeName());
-          Value *args[] = {op, lhs, rhs, opName, funcName, valueAddr};
-          builder.CreateCall(binOptLogFunc, args);
         }
       }
     }

@@ -14,5 +14,5 @@ target_link_libraries(profiler PRIVATE LLVM)
 
 add_custom_target(run_profiler
     COMMENT "Instrumenting ${SOURCE}"
-    COMMAND clang -Xclang -load -Xclang $<TARGET_FILE_DIR:profiler>/$<TARGET_FILE_NAME:profiler> ${SOURCE} -flegacy-pass-manager -O2
+    COMMAND clang -Xclang -load -Xclang $<TARGET_FILE_DIR:profiler>/$<TARGET_FILE_NAME:profiler> ${SOURCE} -O2
 )
