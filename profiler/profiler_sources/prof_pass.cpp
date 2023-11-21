@@ -1,66 +1,61 @@
+#include "llvm/Pass.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/InstrTypes.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/IR/Module.h"
-#include "llvm/Pass.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
-#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
-using namespace llvm;
-
+namespace llvm {
 namespace {
+    struct MyPass : public FunctionPass {
+    static char ID;
+    MyPass() : FunctionPass(ID) {}
 
-struct LoggerPass : public FunctionPass {
-	static char ID;
-	LoggerPass() : FunctionPass(ID) {}
+    inline bool isFuncLogger(StringRef name)
+    {
+        return name == "log_instruction";
+    }
 
-	bool isFuncLogger(StringRef name) {
-		return name == "instrLog";
-	}
+    virtual bool runOnFunction(Function &F) {
+        if (isFuncLogger(F.getName())) {
+            return false;
+        }
 
-	virtual bool runOnFunction(Function &F) {
-		outs() << F.getName() << "\n";
-		if(isFuncLogger(F.getName())) {
-			return false;
-		}
+        LLVMContext &Ctx = F.getContext();
+        IRBuilder<> builder(Ctx);
+        Type *retType = Type::getVoidTy(Ctx);
 
-		LLVMContext &Ctx = F.getContext();
-		IRBuilder<> builder(Ctx);
-		Type *retType = Type::getVoidTy(Ctx);
+        ArrayRef<Type *> logInstructionParamTypes = { builder.getInt8Ty()->getPointerTo() };
+        FunctionType *logInstructionFuncType = FunctionType::get(retType, logInstructionParamTypes, false);
+        FunctionCallee logInstructionFunc = F.getParent()->getOrInsertFunction("log_instruction", logInstructionFuncType);
 
-		std::vector<Type *> instrLogParamTypes = {builder.getInt8Ty()->getPointerTo()};
-		FunctionType *instrLogFuncType = FunctionType::get(retType, instrLogParamTypes, false);
-		FunctionCallee instrLogFunc = F.getParent()->getOrInsertFunction("instrLog", instrLogFuncType);
+        for (auto &B : F) {
+            for (auto &I : B) {
+                if (auto *phi = dyn_cast<PHINode>(&I)) {
+                    continue;
+                }
+                builder.SetInsertPoint(&I);
 
-		for (auto &B : F) {
-			for (auto &I : B) {
-				if (auto *phi = dyn_cast<PHINode>(&I)) {
-					continue;
-				}
-				if (auto *call = dyn_cast<CallInst>(&I)) {
-					continue;
-				}
-				builder.SetInsertPoint(&I);
-				Value *instrName = builder.CreateGlobalStringPtr(I.getOpcodeName());
-				if(instrName) {
-					Value *args[] = {instrName};
-					builder.CreateCall(instrLogFunc, args);
-				}
-			}
-		}
+                Value *opName = builder.CreateGlobalStringPtr(I.getOpcodeName());
+                if (opName) {
+                    Value *args[] = {opName};
+                    builder.CreateCall(logInstructionFunc, args);  
+                }        
+            }
+        }
 
-		return false;
-	}
+        return true;
+    }
 };
 
-char LoggerPass::ID = 0;
+} // namespace
 
-static void registerLoggerPass(const PassManagerBuilder&, legacy::PassManagerBase& PM) {
-	PM.add(new LoggerPass());
+char MyPass::ID = 0;
+
+static void registerMyPass(const PassManagerBuilder &, legacy::PassManagerBase &PM) {
+    PM.add(new MyPass());
 }
 
-static RegisterStandardPasses RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerLoggerPass);
+static RegisterStandardPasses RegisterMyPass(PassManagerBuilder::EP_OptimizerLast, registerMyPass);
 
-}
+} // namespace llvm

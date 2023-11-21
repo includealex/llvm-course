@@ -75,8 +75,8 @@ void app() {
     // Here random squares are generated.
     for (int i = 0; i < NUM_SQRS_X; ++i) {
         for (int j = 0; j < NUM_SQRS_Y; ++j) {
-            int random = simRand() % sqr_num;
-            if (random < 1) {
+            int random_sq = simRand() % sqr_num;
+            if (random_sq < 1) {
                 squares[i][j] = 1;
                 continue;
             }
@@ -85,7 +85,7 @@ void app() {
     }
 
     // Here life processes live.
-    for (int step = 0; step < 1000; ++step) {
+    for (int step = 0; step < 2; ++step) {
         for (int y = 0; y < NUM_SQRS_Y; ++y) {
             for (int x = 0; x < NUM_SQRS_X; ++x) {
                 printSquare(&squares, x, y);

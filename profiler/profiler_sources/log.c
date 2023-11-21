@@ -1,14 +1,6 @@
 #include <stdio.h>
 
-void instrLog(char *funcName)
+void log_instruction(const char *insn)
 {
-	printf("%s\n", funcName);
-}
-
-void callLogger(char* calleeName, char* callerName, long int valID){
-    printf("[CALL] %s\n", calleeName);
-}
-
-void operationLogger(char *op_name) {
-    printf("[LOG] '%s'\n", op_name);
+    printf("%s\n", insn);
 }
