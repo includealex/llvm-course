@@ -17,6 +17,6 @@ add_custom_target(
   gen_IR
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMAND ${CMAKE_C_COMPILER} -S -emit-llvm ${CMAKE_CURRENT_SOURCE_DIR}/app.c
-          -I${PROJECT_SOURCE_DIR}/includes/ -O2
+          -I${PROJECT_SOURCE_DIR}/game/includes/ -O2
           -o ${CMAKE_CURRENT_SOURCE_DIR}/llvm_file/appIR.ll
 )
