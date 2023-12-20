@@ -1,3 +1,5 @@
+#include <iostream>
+
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
@@ -7,115 +9,88 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
+
 using namespace llvm;
 
-namespace {
-struct MyPass : public FunctionPass {
-  static char ID;
-  MyPass() : FunctionPass(ID) {}
+namespace custom_pass {
 
-  bool isFuncLogger(StringRef name) {
-    return name == "binOptLogger" || name == "callLogger" ||
-           name == "funcStartLogger" || name == "funcEndLogger";
-  }
+extern "C" {
+    void traceInstr(char *instr_name);
+}
 
-  virtual bool runOnFunction(Function &F) {
-    if (isFuncLogger(F.getName())) {
-      return false;
-    }
-    // Dump Function
-    outs() << "In a function called " << F.getName() << "\n\n";
+struct CustomPass : public FunctionPass {
+    static char ID;
 
-    for (auto &B : F) {
-      for (auto &I : B) {
-        // Dump Instructions
-        outs() << "Instruction: " << (uint64_t)(&I) << "\n";
-        I.print(outs(), true);
-        outs() << "\n";
-      }
-      outs() << "\n";
-    }
+    CustomPass() : FunctionPass(ID) {}
 
-    // Prepare builder for IR modification
-    LLVMContext &Ctx = F.getContext();
-    IRBuilder<> builder(Ctx);
-    Type *retType = Type::getVoidTy(Ctx);
-
-    // Prepare funcStartLogger function
-    ArrayRef<Type *> funcStartParamTypes = {
-        builder.getInt8Ty()->getPointerTo()};
-    FunctionType *funcStartLogFuncType =
-        FunctionType::get(retType, funcStartParamTypes, false);
-    FunctionCallee funcStartLogFunc = F.getParent()->getOrInsertFunction(
-        "funcStartLogger", funcStartLogFuncType);
-
-    // Insert a call to funcStartLogger function in the function begin
-    BasicBlock &entryBB = F.getEntryBlock();
-    builder.SetInsertPoint(&entryBB.front());
-    Value *funcName = builder.CreateGlobalStringPtr(F.getName());
-    Value *args[] = {funcName};
-    builder.CreateCall(funcStartLogFunc, args);
-
-    // Prepare callLogger function
-    ArrayRef<Type *> callParamTypes = {builder.getInt8Ty()->getPointerTo(),
-                                          builder.getInt8Ty()->getPointerTo(),
-                                          Type::getInt64Ty(Ctx)};
-    FunctionType *callLogFuncType =
-        FunctionType::get(retType, callParamTypes, false);
-    FunctionCallee callLogFunc =
-        F.getParent()->getOrInsertFunction("callLogger", callLogFuncType);
-
-    // Prepare funcEndLogger function
-    ArrayRef<Type *> funcEndParamTypes = {
-        builder.getInt8Ty()->getPointerTo(), Type::getInt64Ty(Ctx)};
-    FunctionType *funcEndLogFuncType =
-        FunctionType::get(retType, funcEndParamTypes, false);
-    FunctionCallee funcEndLogFunc =
-        F.getParent()->getOrInsertFunction("funcEndLogger", funcEndLogFuncType);
-    
-    // Insert loggers for call, binOpt and ret instructions
-    for (auto &B : F) {
-      for (auto &I : B) {
-        Value *valueAddr =
-            ConstantInt::get(builder.getInt64Ty(), (int64_t)(&I));
-        if (auto *call = dyn_cast<CallInst>(&I)) {
-          // Insert before call
-          builder.SetInsertPoint(call);
-
-          // Insert a call to callLogger function
-          Function *callee = call->getCalledFunction();
-          if (callee && !isFuncLogger(callee->getName())) {
-            Value *calleeName =
-                builder.CreateGlobalStringPtr(callee->getName());
-            Value *funcName = builder.CreateGlobalStringPtr(F.getName());
-            Value *args[] = {funcName, calleeName, valueAddr};
-            builder.CreateCall(callLogFunc, args);
-          }
+    bool runOnFunction(Function &func) override {
+        if (func.getName() == "traceInstr") {
+            return false; // diabling for current func
         }
-        if (auto *ret = dyn_cast<ReturnInst>(&I)) {
-          // Insert before ret
-          builder.SetInsertPoint(ret);
 
-          // Insert a call to funcEndLogFunc function
-          Value *funcName = builder.CreateGlobalStringPtr(F.getName());
-          Value *args[] = {funcName, valueAddr};
-          builder.CreateCall(funcEndLogFunc, args);
+        LLVMContext &context = func.getContext();
+        IRBuilder<> builder(context);
+        Type *tracer_ret_type = Type::getVoidTy(context);
+
+        ArrayRef<Type *> tracer_instr_param_types = {
+            builder.getInt8Ty()->getPointerTo(),
+        };
+
+        FunctionType *tracer_instr_func_type =
+            FunctionType::get(tracer_ret_type, tracer_instr_param_types, false);
+        FunctionCallee tracer_instr_func = func.getParent()->getOrInsertFunction(
+            "traceInstr", tracer_instr_func_type);
+        // Dump functions
+        outs() << "trace: " << func.getName() << "\n";
+
+        for (auto &basic_block : func) {
+            for (auto &instruction : basic_block) {
+                if (auto *call = dyn_cast<CallInst>(&instruction)) {
+                    Function *callee = call->getCalledFunction();
+                    if (!callee || callee->getName() == "traceInstr") {
+                        continue; // diabling for current func
+                    }
+                }
+
+                // ret, br, switch, 
+                if (instruction.mayHaveSideEffects() && !instruction.isTerminator()) {
+                    continue;
+                }
+
+                // Skip PHI Nodes
+                if (auto *phi = dyn_cast<PHINode>(&instruction)) {
+                  continue;
+                }
+                // Dump functions
+                outs() << "  Adding calls for: " << instruction.getOpcodeName() << "\n";
+
+                builder.SetInsertPoint(&instruction);
+                Value *instruction_name =
+                    builder.CreateGlobalStringPtr(instruction.getOpcodeName());
+                Value *args[] = {instruction_name};
+                builder.CreateCall(tracer_instr_func, args);
+            }
         }
-      }
+
+        return true;
     }
-    return true;
-  }
 };
-} // namespace
 
-char MyPass::ID = 0;
+char CustomPass::ID = 0;
 
-// Automatically enable the pass.
-// http://adriansampson.net/blog/clangpass.html
-static void registerMyPass(const PassManagerBuilder &,
-                                 legacy::PassManagerBase &PM) {
-  PM.add(new MyPass());
+// code below is from http://adriansampson.net/blog/clangpass.html
+static void registerMyPass(const PassManagerBuilder &Builder,
+                           llvm::legacy::PassManagerBase &PM) {
+    // Double check of opt level
+    if (Builder.OptLevel == 2) {
+        PM.add(new CustomPass());
+        outs () << "GOTCHA" << "\n";
+    } else {
+        outs () << "not hehe" << "\n";
+    }
 }
 static RegisterStandardPasses
-    RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible,
+    RegisterMyPass(PassManagerBuilder::EP_OptimizerLast,
                    registerMyPass);
+} // namespace my_pass
